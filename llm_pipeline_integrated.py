@@ -49,17 +49,12 @@ class PromptTemplates:
 
     STEP_0_1_STRUCTURE_APPLICATION = """以下の「本願発明」のAbstractおよび全てのClaimを読み、特許判断に必要な要素を以下の形式で抽出・構造化してください。
 
-【本願発明】
-Abstract: {abstract}
-
-{claims_text}
-
 ---
-【構造化出力フォーマット】
+Example:【構造化出力フォーマット】
 以下のJSON形式で出力してください：
 
 {{
-  "problem": "課題（例：ノズルプレートの機械的頑強性の向上）",
+  "problem": "課題（例：Example:ノズルプレートの機械的頑強性の向上）",
   "solution_principle": "解決原理（例：高熱安定性・特定の物性を持つ疎油性被膜の適用）",
   "claim1_requirements": [
     "要件A: （例：最高300℃で15%未満の重量損失）",
@@ -74,6 +69,11 @@ Abstract: {abstract}
     "（例：前記被膜の膜厚が1μm～5μmである、こと。）"
   ]
 }}
+
+【本願発明】
+Abstract: {abstract}
+
+Claims: {claims_text}
 
 JSON形式のみで回答してください。"""
 
@@ -255,7 +255,8 @@ Claim 1の数値にしたことで、先行技術からは**予測できない�
 class PatentExaminationSystemIntegrated:
     """統合版特許審査システム"""
 
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-exp"):
+    # def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-exp"):
+    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
         """
         Args:
             api_key: Google AI Studio APIキー
@@ -308,7 +309,7 @@ class PatentExaminationSystemIntegrated:
                 return json.loads(response_text.strip())
 
     def _generate_with_retry(self, use_json_model: bool, prompt: str,
-                            max_retries: int = 3, initial_wait: int = 2) -> str:
+                            max_retries: int = 5, initial_wait: int = 2) -> str:
         """
         リトライロジック付きでコンテンツを生成
 
@@ -334,7 +335,7 @@ class PatentExaminationSystemIntegrated:
                 return response.text
             except google_exceptions.ResourceExhausted as e:
                 if attempt < max_retries - 1:
-                    wait_time = initial_wait * (2 ** attempt)  # 指数バックオフ
+                    wait_time = initial_wait * (4 ** attempt)  # 指数バックオフ
                     print(f"\n⏳ レート制限エラー。{wait_time}秒待機してリトライします... (試行 {attempt + 1}/{max_retries})")
                     time.sleep(wait_time)
                 else:
@@ -344,7 +345,7 @@ class PatentExaminationSystemIntegrated:
                 print(f"\n❌ 予期しないエラー: {e}")
                 raise
 
-    def step0_1_structure_application(self, abstract: str, claims: List[str]) -> PatentDocument:
+    def step0_structure_application(self, doc_dict: Dict) -> PatentDocument:
         """
         ステップ0.1: 本願発明の構造化
 
@@ -359,7 +360,9 @@ class PatentExaminationSystemIntegrated:
         print("📋 ステップ0.1: 本願発明の構造化")
         print("=" * 80)
 
-        claims_text = "\n".join([f"Claim {i+1}: {claim}" for i, claim in enumerate(claims)])
+        abstract = doc_dict.get("abstract", "")
+        claims_text = doc_dict.get("claims", "")
+
         prompt = PromptTemplates.STEP_0_1_STRUCTURE_APPLICATION.format(
             abstract=abstract,
             claims_text=claims_text
@@ -374,49 +377,49 @@ class PatentExaminationSystemIntegrated:
         print(f"Claim 1要件: {len(result['claim1_requirements'])}個")
 
         self.conversation_history.append({
-            "step": "0.1",
+            "step": doc_dict["step"],
             "role": "構造化",
             "content": result
         })
 
         return result
 
-    def step0_2_structure_prior_art(self, abstract: str, claims: List[str]) -> PatentDocument:
-        """
-        ステップ0.2: 先行技術の構造化
+    # def step0_2_structure_prior_art(self, doc_dict_b: Dict) -> PatentDocument:
+    #     """
+    #     ステップ0.2: 先行技術の構造化
 
-        Args:
-            abstract: 先行技術のAbstract
-            claims: 先行技術のClaimリスト
+    #     Args:
+    #         abstract: 先行技術のAbstract
+    #         claims: 先行技術のClaimリスト
 
-        Returns:
-            構造化された先行技術データ
-        """
-        print("\n" + "=" * 80)
-        print("📋 ステップ0.2: 先行技術の構造化")
-        print("=" * 80)
+    #     Returns:
+    #         構造化された先行技術データ
+    #     """
+    #     print("\n" + "=" * 80)
+    #     print("📋 ステップ0.2: 先行技術の構造化")
+    #     print("=" * 80)
 
-        claims_text = "\n".join([f"Claim {i+1}: {claim}" for i, claim in enumerate(claims)])
-        prompt = PromptTemplates.STEP_0_2_STRUCTURE_PRIOR_ART.format(
-            abstract=abstract,
-            claims_text=claims_text
-        )
+    #     claims_text = "\n".join([f"Claim {i+1}: {claim}" for i, claim in enumerate(claims)])
+    #     prompt = PromptTemplates.STEP_0_2_STRUCTURE_PRIOR_ART.format(
+    #         abstract=abstract,
+    #         claims_text=claims_text
+    #     )
 
-        response_text = self._generate_with_retry(use_json_model=True, prompt=prompt)
-        result = self._parse_json_response(response_text)
+    #     response_text = self._generate_with_retry(use_json_model=True, prompt=prompt)
+    #     result = self._parse_json_response(response_text)
 
-        print("\n✅ 構造化完了:")
-        print(f"課題: {result['problem']}")
-        print(f"解決原理: {result['solution_principle']}")
-        print(f"Abstractの示唆: {result.get('abstract_hints', {})}")
+    #     print("\n✅ 構造化完了:")
+    #     print(f"課題: {result['problem']}")
+    #     print(f"解決原理: {result['solution_principle']}")
+    #     print(f"Abstractの示唆: {result.get('abstract_hints', {})}")
 
-        self.conversation_history.append({
-            "step": "0.2",
-            "role": "構造化",
-            "content": result
-        })
+    #     self.conversation_history.append({
+    #         "step": "0.2",
+    #         "role": "構造化",
+    #         "content": result
+    #     })
 
-        return result
+    #     return result
 
     def step1_applicant_arguments(self, app_data: Dict, prior_data: Dict) -> str:
         """
@@ -526,15 +529,13 @@ class PatentExaminationSystemIntegrated:
         return decision
 
     def run_full_examination(self,
-                            app_abstract: str,
-                            app_claims: List[str],
-                            prior_abstract: str,
-                            prior_claims: List[str]) -> Dict:
+                            dict_a: Dict,
+                            dict_b: Dict) -> Dict:
         """
         完全な審査プロセスの実行
 
         Args:
-            app_abstract: 本願発明のAbstract
+            dict_a: 本願発明の構造化データ
             app_claims: 本願発明のClaimリスト
             prior_abstract: 先行技術のAbstract
             prior_claims: 先行技術のClaimリスト
@@ -551,8 +552,10 @@ class PatentExaminationSystemIntegrated:
 
         try:
             # ステップ0: 構造化
-            app_data = self.step0_1_structure_application(app_abstract, app_claims)
-            prior_data = self.step0_2_structure_prior_art(prior_abstract, prior_claims)
+            dict_a["step"] = "0.1 Claim"
+            dict_b["step"] = "0.2 Candidate Prior Art"
+            app_data = self.step0_structure_application(dict_a)
+            prior_data = self.step0_structure_application(dict_b)
 
             # ステップ1: 代理人の主張
             arguments = self.step1_applicant_arguments(app_data, prior_data)
@@ -565,7 +568,10 @@ class PatentExaminationSystemIntegrated:
 
             print("\n" + "✅" * 40)
             print("特許審査プロセス完了")
+            print(decision)
             print("✅" * 40)
+
+            inventiveness = self.judge_inventiveness(decision)
 
             return {
                 "application_structure": app_data,
@@ -573,7 +579,8 @@ class PatentExaminationSystemIntegrated:
                 "applicant_arguments": arguments,
                 "examiner_review": review,
                 "final_decision": decision,
-                "conversation_history": self.conversation_history
+                "conversation_history": self.conversation_history,
+                "inventiveness": inventiveness
             }
 
         except Exception as e:
@@ -586,6 +593,62 @@ class PatentExaminationSystemIntegrated:
                 "partial_results": "処理が途中で中断されました"
             }
 
+    def judge_inventiveness(self, final_decision_text: str) -> Dict[str, bool]:
+        """
+        最終判断テキストから各クレームの進歩性を抽出
+        このjsonテキストを抽出して、json形式で返す。
+        ```json
+{
+  "claim1": {
+    "inventive": false,
+    "reason": "レイトレーシングにおける処理速度向上ニーズは自明であり、パイプラインの分割・並列化は通常の最適化手段であるため。"
+  },
+  "claim2": {
+    "inventive": false,
+    "reason": "Claim 1の並列化が容易想到である場合、各ユニットが異なるレイを処理することは並列処理効率最大化のための技術常識であるため。"
+  },
+  "claim3": {
+    "inventive": false,
+
+
+        Args:
+            final_decision_text: 最終判断のテキスト
+
+        Returns:
+            各クレームの進歩性を示す辞書
+
+        """
+        inventiveness = {}
+        # ’’’json形式の部分を抽出
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', final_decision_text, re.DOTALL)
+        if json_match:
+            json_text = json_match.group(1)
+            try:
+                json_data = json.loads(json_text)
+                # claimは何番まであるか不明なので、動的に処理
+                for claim_key in json_data.keys():
+                    if claim_key.startswith("claim"):
+                        inventiveness[claim_key] = {
+                            'inventive': json_data[claim_key]['inventive'],
+                            'reason': json_data[claim_key]['reason']
+                        }
+                return inventiveness
+            except json.JSONDecodeError:
+                print("❌ 最終判断のJSONパースに失敗しました。")
+                print(final_decision_text)
+                return {"error": final_decision_text}
+
+
+
+        for claim_num in range(1, 4):
+            pattern = rf"### {claim_num}\. Claim {claim_num} .*?\n\*\*判断:\*\* \[(容易想到である|容易想到ではない)\]"
+            match = re.search(pattern, final_decision_text, re.DOTALL)
+            if match:
+                inventiveness[claim_num] = (match.group(1) == "容易想到ではない")
+            else:
+                inventiveness[claim_num] = None  # 判定できなかった場合
+
+        return inventiveness
     def save_results(self, results: Dict, output_path: str):
         """
         審査結果をJSONファイルに保存
@@ -601,67 +664,43 @@ class PatentExaminationSystemIntegrated:
 
 # ==================== メイン実行関数 ====================
 
-def main():
-    """メイン実行関数（サンプル）"""
+def entry(doc_dict_a, doc_dict_b):
+    """
+    2つのクレームファイルから特許審査を実行し、結果を返す
 
-    # config.envファイルから環境変数を読み込む
-    load_dotenv('config.env')
+    Args:
+        claim_file_a: 本願発明のクレームテキストファイルのパス
+        claim_file_b: 先行技術のクレームテキストファイルのパス
 
-    # APIキーの設定（環境変数から取得）
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        print("⚠️ config.envファイルにGOOGLE_API_KEYを設定してください")
-        return
-
-    # システムの初期化
+    Returns:
+        dict: 審査結果の辞書、エラー時はNone
+    """
     try:
+
+        # config.envファイルから環境変数を読み込む
+        load_dotenv('config.env')
+
+        # APIキーの設定（環境変数から取得）
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("⚠️ config.envファイルにGOOGLE_API_KEYを設定してください")
+            return None
+
+        # システムの初期化
         system = PatentExaminationSystemIntegrated(api_key)
-        print(f"✅ システム初期化完了 (モデル: {system.model_name})")
+
+        # 完全な審査プロセスの実行
+        results = system.run_full_examination(doc_dict_a, doc_dict_b)   
+
+        return results
+
     except ValueError as e:
         print(f"❌ 初期化エラー: {e}")
-        return
-
-    # サンプルデータ（実際のデータに置き換えてください）
-    app_abstract = """
-    本発明は、インクジェットプリントヘッドのノズルプレートに関し、
-    特に高温・高圧環境下での耐久性を向上させた疎油性被膜を提供する。
-    この被膜は、300℃で15%未満の重量損失、50°超の接触角度、
-    30°未満の滑走角度を有し、290℃かつ350psiに曝露後も性能を維持する。
-    """
-
-    app_claims = [
-        "最高300℃で15%未満の重量損失を有し、接触角度が約50°超であり、滑走角度が約30°未満であり、290℃かつ350psiに曝露後も性能を維持する疎油性被膜を備えたノズルプレート。",
-        "前記被膜がフッ素系ポリマーを含む、請求項1に記載のノズルプレート。",
-        "前記被膜の膜厚が1μm～5μmである、請求項1または2に記載のノズルプレート。"
-    ]
-
-    prior_abstract = """
-    高温加熱による表面特性の低下を防止し、汚れを低減するための
-    熱に安定な撥油性低接着性コーティングを提供する。
-    このコーティングは、滑走角度が約30°未満であり、
-    200℃に30分曝露後も性能を維持する。
-    好ましくは、接触角度は45°よりも大きく、
-    180℃〜320℃の温度範囲および100psi〜400psiの圧力範囲で使用可能である。
-    """
-
-    prior_claims = [
-        "滑走角度が約30°未満であり、200℃に30分曝露後も性能を維持する撥油性コーティング。"
-    ]
-
-    # 完全な審査プロセスの実行
-    results = system.run_full_examination(
-        app_abstract, app_claims,
-        prior_abstract, prior_claims
-    )
-
-    # 結果の保存
-    output_path = "patent_examination_results_integrated.json"
-    system.save_results(results, output_path)
-
-    print("\n" + "=" * 80)
-    print("📊 審査プロセスが完了しました")
-    print("=" * 80)
-
-
+        return None
+    except Exception as e:
+        print(f"❌ エラーが発生しました: {e}")
+        return None
+    
 if __name__ == "__main__":
-    main()
+    # ここにテストコードやデバッグコードを記述できます
+    pass
