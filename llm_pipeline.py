@@ -9,6 +9,8 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 import json
 from dotenv import load_dotenv
+import time
+from google.api_core import exceptions as google_exceptions
 
 
 @dataclass
@@ -31,8 +33,8 @@ class PatentDocument:
 
 class PatentExaminationSystem:
     """特許審査システム"""
-    
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-pro"):
+
+    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-exp"):
         """
         Args:
             api_key: Google AI Studio APIキー
@@ -40,7 +42,40 @@ class PatentExaminationSystem:
         """
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model_name)
+        # JSON出力用のモデル（構造化データ用）
+        self.json_model = genai.GenerativeModel(
+            model_name=model_name,
+            generation_config={"response_mime_type": "application/json"}
+        )
         self.conversation_history = []
+
+    def _generate_with_retry(self, model, prompt, max_retries=3, initial_wait=2):
+        """
+        リトライロジック付きでコンテンツを生成
+
+        Args:
+            model: 使用するモデル
+            prompt: プロンプト
+            max_retries: 最大リトライ回数
+            initial_wait: 初期待機時間（秒）
+
+        Returns:
+            レスポンス
+        """
+        for attempt in range(max_retries):
+            try:
+                return model.generate_content(prompt)
+            except google_exceptions.ResourceExhausted as e:
+                if attempt < max_retries - 1:
+                    wait_time = initial_wait * (2 ** attempt)  # 指数バックオフ
+                    print(f"\n⏳ レート制限エラー。{wait_time}秒待機してリトライします... (試行 {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                else:
+                    print(f"\n❌ 最大リトライ回数に達しました。エラー: {e}")
+                    raise
+            except Exception as e:
+                print(f"\n❌ 予期しないエラー: {e}")
+                raise
         
     def step0_1_structure_application(self, abstract: str, claims: List[str]) -> PatentDocument:
         """
@@ -90,17 +125,9 @@ Abstract: {abstract}
 
 JSON形式のみで回答してください。"""
 
-        response = self.model.generate_content(prompt)
-        result_text = response.text.strip()
-        
-        # JSONを抽出（マークダウンのコードブロックがある場合に対応）
-        if "```json" in result_text:
-            result_text = result_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in result_text:
-            result_text = result_text.split("```")[1].split("```")[0].strip()
-        
-        result = json.loads(result_text)
-        
+        response = self._generate_with_retry(self.json_model, prompt)
+        result = json.loads(response.text)
+
         print("\n✅ 構造化完了:")
         print(f"課題: {result['problem']}")
         print(f"解決原理: {result['solution_principle']}")
@@ -158,17 +185,9 @@ Abstract: {abstract}
 
 JSON形式のみで回答してください。"""
 
-        response = self.model.generate_content(prompt)
-        result_text = response.text.strip()
-        
-        # JSONを抽出
-        if "```json" in result_text:
-            result_text = result_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in result_text:
-            result_text = result_text.split("```")[1].split("```")[0].strip()
-        
-        result = json.loads(result_text)
-        
+        response = self._generate_with_retry(self.json_model, prompt)
+        result = json.loads(response.text)
+
         print("\n✅ 構造化完了:")
         print(f"課題: {result['problem']}")
         print(f"解決原理: {result['solution_principle']}")
@@ -239,7 +258,7 @@ JSON形式のみで回答してください。"""
 [Claim 3の追加限定が先行技術から容易想到でない理由]
 """
 
-        response = self.model.generate_content(prompt)
+        response = self._generate_with_retry(self.model, prompt)
         arguments = response.text
         
         print("\n✅ 代理人の主張を生成しました")
@@ -323,7 +342,7 @@ Claim 1の数値にしたことで、先行技術からは**予測できない�
 同様に、Claim 3の追加限定についても検証してください。
 """
 
-        response = self.model.generate_content(prompt)
+        response = self._generate_with_retry(self.model, prompt)
         review = response.text
         
         print("\n✅ 審査官の検証を生成しました")
@@ -405,7 +424,7 @@ Claim 1の数値にしたことで、先行技術からは**予測できない�
 }}
 """
 
-        response = self.model.generate_content(prompt)
+        response = self._generate_with_retry(self.model, prompt)
         decision = response.text
         
         print("\n✅ 最終判断を生成しました")
