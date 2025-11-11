@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE patent-document SYSTEM "patent-document.dtd">
+<patent-document>
+  <bibliographic-data>
+    <!-- 公開情報 -->
+    <publication-reference>
+      <document-id>
+        <country>JP</country>
+        <doc-number>2023123456</doc-number>
+        <kind>A</kind>
+        <date>20230815</date>
+      </document-id>
+    </publication-reference>
+    
+    <!-- 出願情報 -->
+    <application-reference>
+      <document-id>
+        <country>JP</country>
+        <doc-number>2022034567</doc-number>
+        <date>20220208</date>
+      </document-id>
+    </application-reference>
+    
+    <!-- 分類情報 -->
+    <classifications-ipcr>
+      <classification-ipcr>
+        <ipc-version-indicator><date>20060101</date></ipc-version-indicator>
+        <classification-level>A</classification-level>
+        <section>H</section>
+        <class>04</class>
+        <subclass>L</subclass>
+        <main-group>9</main-group>
+        <subgroup>00</subgroup>
+        <symbol-position>F</symbol-position>
+        <classification-value>I</classification-value>
+        <action-date><date>20230815</date></action-date>
+        <generating-office><country>JP</country></generating-office>
+        <classification-status>B</classification-status>
+        <classification-data-source>H</classification-data-source>
+        <text>H04L9/00</text>
+      </classification-ipcr>
+      
+      <classification-ipcr>
+        <ipc-version-indicator><date>20060101</date></ipc-version-indicator>
+        <classification-level>A</classification-level>
+        <section>G</section>
+        <class>06</class>
+        <subclass>K</subclass>
+        <main-group>7</main-group>
+        <subgroup>14</subgroup>
+        <symbol-position>L</symbol-position>
+        <classification-value>I</classification-value>
+        <action-date><date>20230815</date></action-date>
+        <generating-office><country>JP</country></generating-office>
+        <classification-status>B</classification-status>
+        <classification-data-source>H</classification-data-source>
+        <text>G06K7/14</text>
+      </classification-ipcr>
+    </classifications-ipcr>
+    
+    <!-- CPC分類 -->
+    <patent-classifications>
+      <patent-classification>
+        <classification-scheme scheme="CPC">
+          <section>H</section>
+          <class>04</class>
+          <subclass>L</subclass>
+          <main-group>9</main-group>
+          <subgroup>32</subgroup>
+        </classification-scheme>
+      </patent-classification>
+      
+      <patent-classification>
+        <classification-scheme scheme="CPC">
+          <section>G</section>
+          <class>06</class>
+          <subclass>K</subclass>
+          <main-group>7</main-group>
+          <subgroup>1417</subgroup>
+        </classification-scheme>
+      </patent-classification>
+    </patent-classifications>
+    
+    <!-- 国内分類（FI） -->
+    <classifications-national>
+      <classification-national>
+        <country>JP</country>
+        <text>H04L9/00 301</text>
+      </classification-national>
+      <classification-national>
+        <country>JP</country>
+        <text>G06K7/14 D</text>
+      </classification-national>
+    </classifications-national>
+    
+    <!-- Fターム -->
+    <f-terms>
+      <f-term>5B058 KA02</f-term>
+      <f-term>5B058 KA34</f-term>
+      <f-term>5J104 AA07</f-term>
+      <f-term>5J104 NA02</f-term>
+    </f-terms>
+    
+    <!-- 発明の名称 -->
+    <invention-title lang="ja">QRコードを用いた暗号化通信システム</invention-title>
+    
+  </bibliographic-data>
+  
+  <!-- 要約 -->
+  <abstract lang="ja">
+    <p>
+      【課題】QRコードを利用したセキュアな通信システムを提供する。
+      【解決手段】本発明の通信システムは、スマートフォンで読み取り可能なQRコードに
+      暗号化された情報を埋め込み、受信側デバイスで復号化する。QRコード内には
+      公開鍵暗号方式による暗号化データが含まれ、認証サーバーを介して安全な
+      データ交換を実現する。
+    </p>
+  </abstract>
+  
+</patent-document>

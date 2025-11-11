@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path="config.env")
 
 try:
-    from llm_pipeline_integrated import entry
+#    from llm_pipeline_integrated import entry
+    from llm_pipeline_difficult import entry
 except ImportError:
     print("Warning: llm_pipeline_integrated.py not found.")
     entry = None
@@ -276,6 +277,8 @@ def process_batch(config, start_index=None, end_index=None, overwrite=False):
 
     for i in range(start, end):
         pbar.update(1)
+        if i != 12 and i != 26:
+            continue
 
         try:
             row = df.iloc[i]

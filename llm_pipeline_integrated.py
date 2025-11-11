@@ -253,8 +253,8 @@ class PatentExaminationSystemIntegrated:
     """統合版特許審査システム"""
 
     # def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-exp"):
-    # def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
-    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
+    # def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
         """
         Args:
             api_key: Google AI Studio APIキー
@@ -431,7 +431,7 @@ class PatentExaminationSystemIntegrated:
             審査官の検証・反論テキスト
         """
         print("\n" + "=" * 80)
-        print("🔍 ステップ2: 審査官の段階的批評（7質問）")
+        print("🔍 ステップ2: 審査官の専門的判断")
         print("=" * 80)
 
         prompt = PromptTemplates.STEP_2_EXAMINER_REVIEW.format(

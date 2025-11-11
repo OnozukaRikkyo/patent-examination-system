@@ -275,6 +275,8 @@ def process_single_row(df, row, index, verbose=False):
                     key_dict_b[key_name] = doc_text_b
 
             result = entry(key_dict_a, key_dict_b)
+            # experiment
+            return True, result
 
         return True, result
 
