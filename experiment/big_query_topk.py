@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+# pip install db-dtypes
 
 def search_similar_patents(target_patent_number, output_csv='similar_patents.csv', top_k=1000):
 

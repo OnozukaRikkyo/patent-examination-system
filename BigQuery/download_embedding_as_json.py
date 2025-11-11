@@ -17,10 +17,20 @@ SELECT
     embedding_v1
 FROM
     `patents-public-data.google_patents_research.publications`
-    TABLESAMPLE SYSTEM (1 PERCENT)
 WHERE
     country = "Japan"
 """
+
+# query = """
+# SELECT
+#     publication_number,
+#     embedding_v1
+# FROM
+#     `patents-public-data.google_patents_research.publications`
+#     TABLESAMPLE SYSTEM (1 PERCENT)
+# WHERE
+#     country = "Japan"
+# """
 
 print("クエリ実行中...")
 query_job = client.query(query)
@@ -30,7 +40,7 @@ total_rows = query_job.result().total_rows
 print(f"総件数: {total_rows:,} 件")
 
 print("ダウンロード中...")
-with open('jp_embeddings.jsonl', 'w') as f:
+with open('jp_embeddings_all.jsonl', 'w') as f:
     for i, row in enumerate(tqdm(query_job, total=total_rows), 1):
         data = {
             'publication_number': row.publication_number,
